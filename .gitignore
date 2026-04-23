@@ -1,0 +1,14 @@
+.env
+.env.*
+__pycache__/
+*.pyc
+.venv/
+venv/
+.idea/
+.vscode/
+.DS_Store
+*.log
+*.xlsx
+*.ogg
+finweb/vendor/
+finweb/public/uploads/
