@@ -56,6 +56,13 @@ $companyName = current_company_name();
           </a>
         </li>
 
+        <li class="nav-item">
+          <a href="/records.php" class="nav-link">
+            <i class="nav-icon fas fa-receipt"></i>
+            <p>Registros</p>
+          </a>
+        </li>
+
         <?php if (($u['role'] ?? '') === 'admin'): ?>
         <li class="nav-item">
           <a href="/users.php" class="nav-link">

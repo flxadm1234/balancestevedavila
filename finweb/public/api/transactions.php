@@ -148,9 +148,8 @@ try {
       FROM items i
       JOIN batches b ON b.id = i.batch_id
       JOIN users u ON u.id = b.user_id
-      JOIN web_user_users wuu ON wuu.user_id = b.user_id
       JOIN web_user_companies wuc ON wuc.web_user_id = :web_user_id AND wuc.company_id = b.company_id
-      WHERE wuu.web_user_id = :web_user_id
+      WHERE 1=1
         AND b.company_id = :company_id
         AND b.status = 'confirmed'
         AND i.item_datetime >= :start::date

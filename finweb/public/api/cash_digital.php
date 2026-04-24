@@ -107,9 +107,8 @@ try {
       ) AS amount
     FROM items i
     JOIN batches b ON b.id = i.batch_id
-    JOIN web_user_users wuu ON wuu.user_id = b.user_id
     JOIN web_user_companies wuc ON wuc.web_user_id = :wid AND wuc.company_id = b.company_id
-    WHERE wuu.web_user_id = :wid
+    WHERE 1=1
       AND b.company_id = :cid
       AND b.status = 'confirmed'
       AND (i.item_datetime AT TIME ZONE 'America/Lima') >= CAST(:start AS date)

@@ -45,7 +45,8 @@ from db import (
     set_batch_company,
     set_batch_company_ruc,
     set_batch_invoice_number,
-    get_last_raw_input_type
+    get_last_raw_input_type,
+    set_raw_input_file
 )
 
 from ai import AI
@@ -53,6 +54,9 @@ from ai import AI
 
 
 TZ = ZoneInfo(os.getenv("TZ", "America/Lima"))
+
+MEDIA_DIR = os.getenv("MEDIA_DIR", os.path.join("finweb", "public", "uploads", "raw_inputs"))
+MEDIA_URL_PREFIX = os.getenv("MEDIA_URL_PREFIX", "/uploads/raw_inputs")
 
 
 class ConfirmFlow(StatesGroup):
@@ -1113,9 +1117,30 @@ async def main():
         content = await bot.download_file(file.file_path)
 
         image_bytes = content.read()
-        mime = "image/jpeg"
+        remote_path = (file.file_path or "")
+        ext = os.path.splitext(remote_path)[1].lower()
+        if ext not in (".jpg", ".jpeg", ".png", ".webp"):
+            ext = ".jpg"
+        mime_map = {
+            ".jpg": "image/jpeg",
+            ".jpeg": "image/jpeg",
+            ".png": "image/png",
+            ".webp": "image/webp",
+        }
+        mime = mime_map.get(ext, "image/jpeg")
 
-        await add_raw_input(db, batch_id, "image", None)
+        raw_input_id = await add_raw_input(db, batch_id, "image", None)
+        try:
+            batch_dir = os.path.join(MEDIA_DIR, str(batch_id))
+            os.makedirs(batch_dir, exist_ok=True)
+            fname = f"{raw_input_id}{ext}"
+            abs_path = os.path.join(batch_dir, fname)
+            with open(abs_path, "wb") as f:
+                f.write(image_bytes)
+            rel_path = f"uploads/raw_inputs/{batch_id}/{fname}"
+            await set_raw_input_file(db, raw_input_id, rel_path, mime, os.path.basename(remote_path) or fname)
+        except Exception:
+            pass
 
         mode = await get_user_mode(db, message.from_user.id)
 
@@ -1173,10 +1198,25 @@ async def main():
         file_id = message.voice.file_id if message.voice else message.audio.file_id
         file = await bot.get_file(file_id)
         content = await bot.download_file(file.file_path)
+        audio_bytes = content.read()
+        remote_path = (file.file_path or "")
+        ext = os.path.splitext(remote_path)[1].lower()
+        if not ext:
+            ext = ".ogg"
+        if ext not in (".ogg", ".oga", ".mp3", ".m4a", ".wav"):
+            ext = ".ogg"
+        mime_map = {
+            ".ogg": "audio/ogg",
+            ".oga": "audio/ogg",
+            ".mp3": "audio/mpeg",
+            ".m4a": "audio/mp4",
+            ".wav": "audio/wav",
+        }
+        mime = mime_map.get(ext, "audio/ogg")
 
         # Guardar audio a archivo temporal, transcribir y limpiar
-        with NamedTemporaryFile(delete=False, suffix=".ogg") as tmp:
-            tmp.write(content.read())
+        with NamedTemporaryFile(delete=False, suffix=ext) as tmp:
+            tmp.write(audio_bytes)
             audio_path = tmp.name
 
         try:
@@ -1187,7 +1227,23 @@ async def main():
             except OSError:
                 pass
 
-        await add_raw_input(db, batch_id, "audio", text)
+        raw_input_id = await add_raw_input(db, batch_id, "audio", text)
+        try:
+            batch_dir = os.path.join(MEDIA_DIR, str(batch_id))
+            os.makedirs(batch_dir, exist_ok=True)
+            fname = f"{raw_input_id}{ext}"
+            abs_path = os.path.join(batch_dir, fname)
+            with open(abs_path, "wb") as f:
+                f.write(audio_bytes)
+            rel_path = f"uploads/raw_inputs/{batch_id}/{fname}"
+            original_name = None
+            if message.audio and getattr(message.audio, "file_name", None):
+                original_name = message.audio.file_name
+            if not original_name:
+                original_name = os.path.basename(remote_path) or fname
+            await set_raw_input_file(db, raw_input_id, rel_path, mime, original_name)
+        except Exception:
+            pass
 
         mode = await get_user_mode(db, message.from_user.id)
         data = ai.extract_from_text(f"mode={mode}\n\n{text}", msg_dt)

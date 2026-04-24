@@ -130,12 +130,24 @@ async def set_batch_invoice_number(db: DB, batch_id: int, user_id: int, invoice_
         r = await conn.execute(q, invoice_number, batch_id, user_id)
     return r.startswith("UPDATE") and not r.endswith(" 0")
 
-async def add_raw_input(db: DB, batch_id: int, input_type: str, content_text: Optional[str]) -> None:
+async def add_raw_input(db: DB, batch_id: int, input_type: str, content_text: Optional[str]) -> int:
     async with db.pool.acquire() as conn:
-        await conn.execute(
-            "INSERT INTO raw_inputs (batch_id, input_type, content_text) VALUES ($1,$2,$3);",
+        row = await conn.fetchrow(
+            "INSERT INTO raw_inputs (batch_id, input_type, content_text) VALUES ($1,$2,$3) RETURNING id;",
             batch_id, input_type, content_text
         )
+        return int(row["id"])
+
+async def set_raw_input_file(db: DB, raw_input_id: int, file_path: str,
+                             mime_type: Optional[str], original_file_name: Optional[str]) -> bool:
+    q = """
+    UPDATE raw_inputs
+    SET file_path = $1, mime_type = $2, original_file_name = $3
+    WHERE id = $4
+    """
+    async with db.pool.acquire() as conn:
+        r = await conn.execute(q, file_path, mime_type, original_file_name, raw_input_id)
+    return r.startswith("UPDATE") and not r.endswith(" 0")
 
 async def get_last_raw_input_type(db: DB, batch_id: int) -> Optional[str]:
     async with db.pool.acquire() as conn:
