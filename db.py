@@ -137,6 +137,14 @@ async def add_raw_input(db: DB, batch_id: int, input_type: str, content_text: Op
             batch_id, input_type, content_text
         )
 
+async def get_last_raw_input_type(db: DB, batch_id: int) -> Optional[str]:
+    async with db.pool.acquire() as conn:
+        row = await conn.fetchrow(
+            "SELECT input_type FROM raw_inputs WHERE batch_id=$1 ORDER BY id DESC LIMIT 1;",
+            batch_id
+        )
+        return (row["input_type"] if row and row["input_type"] else None)
+
 async def insert_items(db: DB, batch_id: int, items: List[Dict[str, Any]]) -> List[int]:
     ids: List[int] = []
     async with db.pool.acquire() as conn:

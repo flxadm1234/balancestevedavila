@@ -44,7 +44,8 @@ from db import (
     set_user_active_company_id,
     set_batch_company,
     set_batch_company_ruc,
-    set_batch_invoice_number
+    set_batch_invoice_number,
+    get_last_raw_input_type
 )
 
 from ai import AI
@@ -481,6 +482,41 @@ async def main():
         )
 
 
+    async def _needs_invoice_prompt_for_confirm(batch_id: int) -> bool:
+        info = await get_draft_batch_info(db, batch_id)
+        invoice_number = (info["invoice_number"] if info and info["invoice_number"] else None)
+        if invoice_number:
+            last_input_type = await get_last_raw_input_type(db, batch_id)
+            if last_input_type == "image":
+                return False
+        return True
+
+    async def _confirm_and_reply(reply_to: Message, telegram_user_id: int, batch_id: int, friendly_name: str, state: FSMContext) -> None:
+        mode = await get_user_mode(db, telegram_user_id)
+        items = await fetch_batch_items(db, batch_id)
+        if not items:
+            await reply_to.answer("Tu borrador está vacío. No hay nada que guardar.", reply_markup=kb_actions())
+            await state.clear()
+            return
+
+        await confirm_batch(db, batch_id, friendly_name)
+        await state.clear()
+
+        info = await get_draft_batch_info(db, batch_id)
+        company_txt = (info["company_name"] if info and info["company_name"] else "No seleccionada")
+        ruc_txt = (info["company_ruc"] if info and info["company_ruc"] else "-")
+        inv_txt = (info["invoice_number"] if info and info["invoice_number"] else "-")
+
+        await reply_to.answer(
+            "✅ *Registro guardado:* " + friendly_name + "\n"
+            f"🏢 *Empresa:* {company_txt}\n"
+            f"🪪 *RUC:* {ruc_txt}\n"
+            f"🧾 *Factura:* {inv_txt}\n\n"
+            + format_items(items)
+            + f"\n\n⚙️ Modo: *{mode.upper()}*",
+            reply_markup=kb_actions()
+        )
+
     # -----------------------------
     # CALLBACKS BOTONES
     # -----------------------------
@@ -589,8 +625,22 @@ async def main():
             await call.answer()
             return
 
-        await state.set_state(ConfirmFlow.waiting_invoice_number)
-        await call.message.answer("🧾 Escribe el número de factura (ej: F001-00001234) o `-` para omitir:")
+        needs_invoice = await _needs_invoice_prompt_for_confirm(batch_id)
+        if needs_invoice:
+            await state.set_state(ConfirmFlow.waiting_invoice_number)
+            await call.message.answer("🧾 Escribe el número de factura (ej: F001-00001234) o `-` para omitir:")
+            await call.answer()
+            return
+
+        data = await state.get_data()
+        friendly_name = (data.get("friendly_name") or "").strip()
+        if not friendly_name:
+            await call.message.answer("No encontré el nombre del registro. Intenta guardar nuevamente.", reply_markup=kb_actions())
+            await state.clear()
+            await call.answer()
+            return
+
+        await _confirm_and_reply(call.message, call.from_user.id, batch_id, friendly_name, state)
         await call.answer()
 
     @dispatcher.message(ConfirmFlow.waiting_company_ruc)
@@ -602,8 +652,20 @@ async def main():
         batch_id = await get_or_create_draft_batch(db, user_id)
         await set_batch_company_ruc(db, batch_id, user_id, val)
 
-        await state.set_state(ConfirmFlow.waiting_invoice_number)
-        await message.answer("🧾 Escribe el número de factura (ej: F001-00001234) o `-` para omitir:")
+        needs_invoice = await _needs_invoice_prompt_for_confirm(batch_id)
+        if needs_invoice:
+            await state.set_state(ConfirmFlow.waiting_invoice_number)
+            await message.answer("🧾 Escribe el número de factura (ej: F001-00001234) o `-` para omitir:")
+            return
+
+        data = await state.get_data()
+        friendly_name = (data.get("friendly_name") or "").strip()
+        if not friendly_name:
+            await message.answer("No encontré el nombre del registro. Intenta guardar nuevamente.", reply_markup=kb_actions())
+            await state.clear()
+            return
+
+        await _confirm_and_reply(message, message.from_user.id, batch_id, friendly_name, state)
 
     @dispatcher.message(ConfirmFlow.waiting_invoice_number)
     async def on_confirm_invoice_number(message: Message, state: FSMContext):
@@ -629,23 +691,7 @@ async def main():
             return
 
         await set_batch_invoice_number(db, batch_id, user_id, val)
-        await confirm_batch(db, batch_id, friendly_name)
-        await state.clear()
-
-        info = await get_draft_batch_info(db, batch_id)
-        company_txt = (info["company_name"] if info and info["company_name"] else "No seleccionada")
-        ruc_txt = (info["company_ruc"] if info and info["company_ruc"] else "-")
-        inv_txt = (info["invoice_number"] if info and info["invoice_number"] else "-")
-
-        await message.answer(
-            "✅ *Registro guardado:* " + friendly_name + "\n"
-            f"🏢 *Empresa:* {company_txt}\n"
-            f"🪪 *RUC:* {ruc_txt}\n"
-            f"🧾 *Factura:* {inv_txt}\n\n"
-            + format_items(items)
-            + f"\n\n⚙️ Modo: *{mode.upper()}*",
-            reply_markup=kb_actions()
-        )
+        await _confirm_and_reply(message, message.from_user.id, batch_id, friendly_name, state)
 
     @dispatcher.callback_query(F.data == "draft_cancel")
     async def cb_draft_cancel(call: CallbackQuery, state: FSMContext):
