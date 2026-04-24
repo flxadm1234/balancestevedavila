@@ -28,7 +28,7 @@ require __DIR__ . '/../app/layout/sidebar.php';
           </select>
           <select id="category_filter" class="form-control form-control-sm" style="width:120px;">
             <option value="">Cat: Todas</option>
-            <option value="business">Negocio</option>
+            <option value="business">Empresa</option>
             <option value="personal">Personal</option>
             <option value="loan">Préstamo</option>
             <option value="third_party">Terceros</option>
@@ -99,7 +99,7 @@ require __DIR__ . '/../app/layout/sidebar.php';
         <div class="form-group">
           <label>Categoría</label>
           <select name="category" class="form-control">
-            <option value="business" selected>Negocio (Tienda)</option>
+            <option value="business" selected>Empresa</option>
             <option value="personal">Personal</option>
             <option value="loan">Préstamo</option>
             <option value="third_party">Terceros</option>

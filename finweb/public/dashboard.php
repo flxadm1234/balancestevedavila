@@ -16,7 +16,7 @@ require __DIR__ . '/../app/layout/sidebar.php';
       <div class="col-12 d-flex justify-content-end align-items-center" style="gap:10px;">
         <label class="mb-0 text-muted mr-1">Filtros:</label>
         <select id="global_category" class="form-control form-control-sm" style="width:160px;">
-          <option value="business">Negocio</option>
+          <option value="business">Empresa</option>
           <option value="personal">Personal</option>
           <option value="loan">Préstamo</option>
           <option value="third_party">Terceros</option>

@@ -581,7 +581,7 @@ async def main():
         await call.message.answer(
             "✅ *Guardar registro*\n"
             "Escríbeme el nombre del registro.\n"
-            "Ej: `Ventas Felix`, `Deudas con Cleyder`, `Gastos de comida`"
+            "Ej: `Venta a cliente`, `Pago de servicio`, `Compra de insumos`"
         )
         await call.answer()
 

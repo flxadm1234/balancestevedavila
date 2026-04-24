@@ -23,7 +23,7 @@ function pm_label(string $pm): string {
 
 function category_label(string $cat): string {
   $map = [
-    'business' => '<span class="badge badge-success">Negocio</span>',
+    'business' => '<span class="badge badge-success">Empresa</span>',
     'personal' => '<span class="badge badge-warning">Personal</span>',
     'loan' => '<span class="badge badge-info">Préstamo</span>',
     'third_party' => '<span class="badge badge-secondary">Terceros</span>',
