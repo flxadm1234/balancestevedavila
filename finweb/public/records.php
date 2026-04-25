@@ -34,14 +34,14 @@ require __DIR__ . '/../app/layout/sidebar.php';
           <table id="records" class="table table-bordered table-striped">
             <thead>
               <tr>
-                <th>Fecha</th>
+                <th>Fecha (Voucher)</th>
                 <th>Tipo</th>
                 <th>Descripción</th>
                 <th>Factura</th>
                 <th>RUC</th>
                 <th>Monto</th>
                 <th>Voucher/Audio</th>
-                <th>Ver</th>
+                <th>Acciones</th>
               </tr>
             </thead>
           </table>
@@ -52,6 +52,43 @@ require __DIR__ . '/../app/layout/sidebar.php';
 </section>
 
 <?php require __DIR__ . '/../app/layout/footer.php'; ?>
+
+<div class="modal fade" id="modalEditRecord" tabindex="-1">
+  <div class="modal-dialog">
+    <form class="modal-content" id="formEditRecord">
+      <input type="hidden" name="id" id="rec_id" value="">
+      <div class="modal-header">
+        <h5 class="modal-title">Editar registro</h5>
+        <button type="button" class="close" data-dismiss="modal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Tipo</label>
+          <select class="form-control" name="kind" id="rec_kind" required>
+            <option value="income">Ingreso</option>
+            <option value="expense">Gasto</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Descripción</label>
+          <input class="form-control" name="friendly_name" id="rec_friendly_name" required>
+        </div>
+        <div class="form-group">
+          <label>Factura</label>
+          <input class="form-control" name="invoice_number" id="rec_invoice_number" placeholder="Ej: F001-00001234">
+        </div>
+        <div class="form-group">
+          <label>RUC</label>
+          <input class="form-control" name="company_ruc" id="rec_company_ruc" placeholder="11 dígitos">
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-dismiss="modal" type="button">Cancelar</button>
+        <button class="btn btn-primary" type="submit">Guardar</button>
+      </div>
+    </form>
+  </div>
+</div>
 
 <script>
   const startDefault = moment().startOf('month');
@@ -64,6 +101,7 @@ require __DIR__ . '/../app/layout/sidebar.php';
   }
 
   $(function() {
+    let table = null;
     $('#range').daterangepicker({
       startDate: startDefault,
       endDate: endDefault,
@@ -72,11 +110,11 @@ require __DIR__ . '/../app/layout/sidebar.php';
       start = s.format('YYYY-MM-DD');
       end = e.format('YYYY-MM-DD');
       setRangeLabel(s, e);
-      table.ajax.reload();
+      if (table) table.ajax.reload();
     });
     setRangeLabel(startDefault, endDefault);
 
-    const table = $('#records').DataTable({
+    table = $('#records').DataTable({
       ajax: {
         url: '/api/records.php',
         data: function(d) {
@@ -97,7 +135,7 @@ require __DIR__ . '/../app/layout/sidebar.php';
         { data: 'company_ruc' },
         { data: 'total_label' },
         { data: 'media' },
-        { data: 'view' }
+        { data: 'actions' }
       ],
       order: [[0, 'desc']]
     });
@@ -108,6 +146,63 @@ require __DIR__ . '/../app/layout/sidebar.php';
       const kind = encodeURIComponent($('#kind').val() || '');
       const url = `/api/records.php?start=${encodeURIComponent(start)}&end=${encodeURIComponent(end)}&kind=${kind}&export=csv`;
       window.location.href = url;
+    });
+
+    $('#records').on('click', '.btn-edit-record', function() {
+      const id = $(this).data('id');
+      const kind = $(this).data('kind');
+      const fname = $(this).data('friendly-name');
+      const inv = $(this).data('invoice-number');
+      const ruc = $(this).data('company-ruc');
+      $('#rec_id').val(id);
+      $('#rec_kind').val(kind);
+      $('#rec_friendly_name').val(fname);
+      $('#rec_invoice_number').val(inv);
+      $('#rec_company_ruc').val(ruc);
+      $('#modalEditRecord').modal('show');
+    });
+
+    $('#formEditRecord').on('submit', async function(e) {
+      e.preventDefault();
+      const form = $(this);
+      const payload = form.serialize();
+      try {
+        const res = await fetch('/api/records.php', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: payload
+        });
+        const js = await res.json();
+        if (!res.ok || !js.ok) {
+          alert((js && js.error) ? js.error : 'No se pudo guardar.');
+          return;
+        }
+        $('#modalEditRecord').modal('hide');
+        table.ajax.reload(null, false);
+      } catch (err) {
+        alert('Error de red al guardar.');
+      }
+    });
+
+    $('#records').on('click', '.btn-del-record', async function() {
+      const id = $(this).data('id');
+      const ok = confirm('¿Eliminar este registro? Esto borrará también sus items.');
+      if (!ok) return;
+      try {
+        const res = await fetch('/api/records.php', {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: `id=${encodeURIComponent(id)}`
+        });
+        const js = await res.json();
+        if (!res.ok || !js.ok) {
+          alert((js && js.error) ? js.error : 'No se pudo eliminar.');
+          return;
+        }
+        table.ajax.reload(null, false);
+      } catch (err) {
+        alert('Error de red al eliminar.');
+      }
     });
   });
 </script>

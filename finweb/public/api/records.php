@@ -16,6 +16,8 @@ header('Content-Type: application/json; charset=utf-8');
 
 $pdo = db();
 $debug = isset($_GET['debug']) && $_GET['debug'] === '1';
+ 
+$method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 
 function json_error(string $msg, ?Throwable $e = null, bool $debug = false, int $code = 400): void {
   http_response_code($code);
@@ -43,6 +45,91 @@ try {
     json_error('Empresa no seleccionada.', null, $debug, 400);
   }
 
+  if ($method === 'POST') {
+    $id = (int)($_POST['id'] ?? 0);
+    $kind = trim($_POST['kind'] ?? '');
+    $friendly_name = trim($_POST['friendly_name'] ?? '');
+    $company_ruc = trim($_POST['company_ruc'] ?? '');
+    $invoice_number = trim($_POST['invoice_number'] ?? '');
+    $company_ruc = ($company_ruc === '' ? null : $company_ruc);
+    $invoice_number = ($invoice_number === '' ? null : $invoice_number);
+ 
+    if ($id <= 0 || $friendly_name === '' || !in_array($kind, ['income', 'expense'], true)) {
+      json_error('Datos inválidos.', null, $debug, 422);
+    }
+ 
+    $st = $pdo->prepare("
+      SELECT 1
+      FROM batches b
+      JOIN web_user_companies wuc ON wuc.web_user_id = :wid AND wuc.company_id = b.company_id
+      WHERE b.id = :id
+        AND b.company_id = :cid
+        AND b.status = 'confirmed'
+      LIMIT 1
+    ");
+    $st->execute([':wid' => $web_user_id, ':cid' => $company_id, ':id' => $id]);
+    if (!$st->fetchColumn()) {
+      json_error('No tienes permiso para editar este registro.', null, $debug, 403);
+    }
+ 
+    $st = $pdo->prepare("
+      UPDATE batches
+      SET kind = :k, friendly_name = :fn, company_ruc = :ruc, invoice_number = :inv
+      WHERE id = :id AND company_id = :cid
+    ");
+    $st->execute([
+      ':k' => $kind,
+      ':fn' => $friendly_name,
+      ':ruc' => $company_ruc,
+      ':inv' => $invoice_number,
+      ':id' => $id,
+      ':cid' => $company_id,
+    ]);
+ 
+    echo json_encode(['ok' => true], JSON_UNESCAPED_UNICODE);
+    exit;
+  }
+ 
+  if ($method === 'DELETE') {
+    parse_str((string)file_get_contents('php://input'), $del);
+    $id = (int)($del['id'] ?? 0);
+    if ($id <= 0) {
+      json_error('ID inválido.', null, $debug, 422);
+    }
+ 
+    $st = $pdo->prepare("
+      SELECT 1
+      FROM batches b
+      JOIN web_user_companies wuc ON wuc.web_user_id = :wid AND wuc.company_id = b.company_id
+      WHERE b.id = :id
+        AND b.company_id = :cid
+      LIMIT 1
+    ");
+    $st->execute([':wid' => $web_user_id, ':cid' => $company_id, ':id' => $id]);
+    if (!$st->fetchColumn()) {
+      json_error('No tienes permiso para eliminar este registro.', null, $debug, 403);
+    }
+ 
+    $pdo->beginTransaction();
+    try {
+      $st = $pdo->prepare("DELETE FROM items WHERE batch_id = :id");
+      $st->execute([':id' => $id]);
+ 
+      $st = $pdo->prepare("DELETE FROM raw_inputs WHERE batch_id = :id");
+      $st->execute([':id' => $id]);
+ 
+      $st = $pdo->prepare("DELETE FROM batches WHERE id = :id AND company_id = :cid");
+      $st->execute([':id' => $id, ':cid' => $company_id]);
+ 
+      $pdo->commit();
+      echo json_encode(['ok' => true], JSON_UNESCAPED_UNICODE);
+      exit;
+    } catch (Throwable $e) {
+      $pdo->rollBack();
+      json_error('Error al eliminar el registro.', $e, $debug, 500);
+    }
+  }
+ 
   $start = norm_date($_GET['start'] ?? '', date('Y-m-01'));
   $end   = norm_date($_GET['end'] ?? '', date('Y-m-t'));
   $kind  = trim($_GET['kind'] ?? '');
@@ -70,6 +157,7 @@ try {
       b.company_ruc,
       b.invoice_number,
       COALESCE(SUM(i.price),0) AS total,
+      MIN(i.item_datetime) AS voucher_at,
       r.input_type AS media_type,
       r.file_path AS media_path
     FROM batches b
@@ -86,11 +174,11 @@ try {
     ) r ON true
     WHERE b.company_id = :cid
       AND b.status = 'confirmed'
-      AND b.confirmed_at >= :start::date
-      AND b.confirmed_at < (:end::date + interval '1 day')
       $where
     GROUP BY b.id, b.friendly_name, b.confirmed_at, kind, b.company_ruc, b.invoice_number, r.input_type, r.file_path
-    ORDER BY b.confirmed_at DESC, b.id DESC
+    HAVING COALESCE(MIN(i.item_datetime), b.confirmed_at) >= :start::date
+      AND COALESCE(MIN(i.item_datetime), b.confirmed_at) < (:end::date + interval '1 day')
+    ORDER BY COALESCE(MIN(i.item_datetime), b.confirmed_at) DESC, b.id DESC
   ";
 
   $st = $pdo->prepare($sql);
@@ -104,7 +192,8 @@ try {
     fprintf($out, chr(0xEF).chr(0xBB).chr(0xBF));
     fputcsv($out, ['Empresa', 'ID Registro', 'Fecha', 'Tipo', 'Descripción', 'Factura', 'RUC', 'Total', 'Tiene voucher', 'Tiene audio']);
     foreach ($rows as $r) {
-      $dt = (new DateTime($r['confirmed_at']))->format('Y-m-d H:i');
+      $dtSrc = $r['voucher_at'] ?: $r['confirmed_at'];
+      $dt = (new DateTime($dtSrc))->format('Y-m-d H:i');
       $hasImage = ($r['media_type'] ?? '') === 'image';
       $hasAudio = ($r['media_type'] ?? '') === 'audio';
       fputcsv($out, [
@@ -126,7 +215,8 @@ try {
 
   $data = [];
   foreach ($rows as $r) {
-    $dt = (new DateTime($r['confirmed_at']))->format('Y-m-d H:i');
+    $dtSrc = $r['voucher_at'] ?: $r['confirmed_at'];
+    $dt = (new DateTime($dtSrc))->format('Y-m-d H:i');
     $kindLabel = (($r['kind'] ?? 'expense') === 'income') ? 'Ingreso' : 'Gasto';
     $mediaHtml = '';
     $mt = (string)($r['media_type'] ?? '');
@@ -138,6 +228,8 @@ try {
     }
 
     $data[] = [
+      'id' => (int)$r['id'],
+      'kind' => ($r['kind'] ?? 'expense'),
       'confirmed_at' => $dt,
       'kind_label' => $kindLabel,
       'friendly_name' => $r['friendly_name'] ?? '',
@@ -145,7 +237,17 @@ try {
       'company_ruc' => $r['company_ruc'] ?? '',
       'total_label' => 'S/ ' . money((float)$r['total']),
       'media' => $mediaHtml,
-      'view' => '<a class="btn btn-sm btn-info" href="/record.php?id=' . (int)$r['id'] . '"><i class="fas fa-eye"></i></a>',
+      'actions' => '
+        <a class="btn btn-sm btn-info" href="/record.php?id=' . (int)$r['id'] . '"><i class="fas fa-eye"></i></a>
+        <button class="btn btn-sm btn-primary btn-edit-record"
+                data-id="' . (int)$r['id'] . '"
+                data-kind="' . htmlspecialchars((string)($r['kind'] ?? 'expense')) . '"
+                data-friendly-name="' . htmlspecialchars((string)($r['friendly_name'] ?? '')) . '"
+                data-invoice-number="' . htmlspecialchars((string)($r['invoice_number'] ?? '')) . '"
+                data-company-ruc="' . htmlspecialchars((string)($r['company_ruc'] ?? '')) . '"
+                type="button"><i class="fas fa-edit"></i></button>
+        <button class="btn btn-sm btn-danger btn-del-record" data-id="' . (int)$r['id'] . '" type="button"><i class="fas fa-trash"></i></button>
+      ',
     ];
   }
 
@@ -155,4 +257,3 @@ try {
 } catch (Throwable $e) {
   json_error('Error interno en registros.', $e, $debug, 500);
 }
-
