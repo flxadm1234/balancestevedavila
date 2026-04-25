@@ -12,8 +12,37 @@ require __DIR__ . '/../app/layout/header.php';
 require __DIR__ . '/../app/layout/sidebar.php';
 
 $pdo = db();
+$companies = $pdo->query("SELECT id,name FROM companies WHERE is_active=true ORDER BY id ASC")->fetchAll() ?: [];
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+  $action = $_POST['action'] ?? 'create';
+  if ($action === 'update_companies') {
+    $target_id = (int)($_POST['web_user_id'] ?? 0);
+    $selected = $_POST['companies'] ?? [];
+    if (!is_array($selected)) $selected = [];
+    $ids = [];
+    foreach ($selected as $v) {
+      $cid = (int)$v;
+      if ($cid > 0) $ids[$cid] = true;
+    }
+
+    if ($target_id > 0) {
+      $pdo->beginTransaction();
+      $st = $pdo->prepare("DELETE FROM web_user_companies WHERE web_user_id = :wid");
+      $st->execute([':wid' => $target_id]);
+      if (!empty($ids)) {
+        $st = $pdo->prepare("INSERT INTO web_user_companies (web_user_id, company_id) VALUES (:wid, :cid)");
+        foreach (array_keys($ids) as $cid) {
+          $st->execute([':wid' => $target_id, ':cid' => $cid]);
+        }
+      }
+      $pdo->commit();
+    }
+
+    header('Location: /users.php');
+    exit;
+  }
+
   $name = trim($_POST['name'] ?? '');
   $email = trim($_POST['email'] ?? '');
   $pass = $_POST['password'] ?? '';
@@ -23,12 +52,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $hash = password_hash($pass, PASSWORD_BCRYPT);
     $st = $pdo->prepare("INSERT INTO web_users(name,email,password_hash,role) VALUES(:n,:e,:h,:r)");
     $st->execute([':n'=>$name, ':e'=>$email, ':h'=>$hash, ':r'=>$role]);
+    $new_id = (int)$pdo->lastInsertId();
+    if ($new_id > 0 && $role === 'admin' && !empty($companies)) {
+      $st = $pdo->prepare("INSERT INTO web_user_companies (web_user_id, company_id) VALUES (:wid, :cid) ON CONFLICT DO NOTHING");
+      foreach ($companies as $c) {
+        $st->execute([':wid' => $new_id, ':cid' => (int)$c['id']]);
+      }
+    }
   }
   header('Location: /users.php');
   exit;
 }
 
-$rows = $pdo->query("SELECT id,name,email,role,is_active,created_at FROM web_users ORDER BY id DESC")->fetchAll();
+$rows = $pdo->query("SELECT id,name,email,role,is_active,created_at FROM web_users ORDER BY id DESC")->fetchAll() ?: [];
+$map = [];
+foreach ($pdo->query("SELECT web_user_id, company_id FROM web_user_companies ORDER BY web_user_id, company_id") as $r) {
+  $wid = (int)$r['web_user_id'];
+  $cid = (int)$r['company_id'];
+  if (!isset($map[$wid])) $map[$wid] = [];
+  $map[$wid][$cid] = true;
+}
 ?>
 <section class="content pt-3">
   <div class="container-fluid">
@@ -46,7 +89,7 @@ $rows = $pdo->query("SELECT id,name,email,role,is_active,created_at FROM web_use
         <table class="table table-bordered table-striped" id="tbl">
           <thead>
             <tr>
-              <th>Nombre</th><th>Email</th><th>Rol</th><th>Activo</th><th>Fecha</th>
+              <th>Nombre</th><th>Email</th><th>Rol</th><th>Empresas</th><th>Activo</th><th>Fecha</th><th></th>
             </tr>
           </thead>
           <tbody>
@@ -55,8 +98,35 @@ $rows = $pdo->query("SELECT id,name,email,role,is_active,created_at FROM web_use
               <td><?= h($r['name']) ?></td>
               <td><?= h($r['email']) ?></td>
               <td><?= h($r['role']) ?></td>
+              <td>
+                <?php
+                  $wid = (int)$r['id'];
+                  $assigned = array_keys($map[$wid] ?? []);
+                  if (empty($assigned)) {
+                    echo '-';
+                  } else {
+                    $names = [];
+                    foreach ($companies as $c) {
+                      if (isset($map[$wid][(int)$c['id']])) $names[] = $c['name'];
+                    }
+                    echo h(implode(', ', $names));
+                  }
+                ?>
+              </td>
               <td><?= $r['is_active'] ? 'Sí' : 'No' ?></td>
               <td><?= (new DateTime($r['created_at']))->format('Y-m-d') ?></td>
+              <td style="white-space:nowrap;">
+                <button
+                  class="btn btn-sm btn-info btn-perms"
+                  data-user-id="<?= (int)$r['id'] ?>"
+                  data-user-email="<?= h($r['email']) ?>"
+                  data-company-ids="<?= h(implode(',', array_keys($map[(int)$r['id']] ?? []))) ?>"
+                  data-toggle="modal"
+                  data-target="#modalPerms"
+                >
+                  <i class="fas fa-building"></i>
+                </button>
+              </td>
             </tr>
           <?php endforeach; ?>
           </tbody>
@@ -88,8 +158,49 @@ $rows = $pdo->query("SELECT id,name,email,role,is_active,created_at FROM web_use
   </div>
 </div>
 
+<div class="modal fade" id="modalPerms" tabindex="-1">
+  <div class="modal-dialog">
+    <form class="modal-content" method="post">
+      <input type="hidden" name="action" value="update_companies">
+      <input type="hidden" name="web_user_id" id="perm_user_id" value="">
+      <div class="modal-header">
+        <h5 class="modal-title">Acceso por empresa</h5>
+        <button type="button" class="close" data-dismiss="modal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-2 text-muted" id="perm_user_email"></div>
+        <?php foreach ($companies as $c): ?>
+          <div class="custom-control custom-checkbox">
+            <input class="custom-control-input perm-company" type="checkbox" id="c<?= (int)$c['id'] ?>" name="companies[]" value="<?= (int)$c['id'] ?>">
+            <label class="custom-control-label" for="c<?= (int)$c['id'] ?>"><?= h($c['name']) ?></label>
+          </div>
+        <?php endforeach; ?>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" data-dismiss="modal" type="button">Cancelar</button>
+        <button class="btn btn-primary" type="submit">Guardar</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <script>
-$(function(){ $('#tbl').DataTable(); });
+$(function(){
+  $('#tbl').DataTable();
+  $('#modalPerms').on('show.bs.modal', function(e) {
+    const btn = $(e.relatedTarget);
+    const uid = btn.data('user-id');
+    const email = btn.data('user-email');
+    const companyIds = (btn.data('company-ids') || '').toString().split(',').filter(x => x);
+
+    $('#perm_user_id').val(uid);
+    $('#perm_user_email').text(email);
+    $('.perm-company').prop('checked', false);
+    companyIds.forEach(id => {
+      $('#c' + id).prop('checked', true);
+    });
+  });
+});
 </script>
 
 <?php require __DIR__ . '/../app/layout/footer.php'; ?>
