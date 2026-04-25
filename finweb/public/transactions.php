@@ -19,14 +19,14 @@ require __DIR__ . '/../app/layout/sidebar.php';
     <div class="card">
       <div class="card-header">
         <h3 class="card-title">Ingresos / Gastos</h3>
-        <div class="card-tools d-flex" style="gap:8px;">
-          <input id="range" class="form-control form-control-sm" style="width:260px;">
-          <select id="kind" class="form-control form-control-sm" style="width:100px;">
+        <div class="card-tools">
+          <input id="range" class="form-control form-control-sm bs-filter bs-filter-range" placeholder="Rango de fechas">
+          <select id="kind" class="form-control form-control-sm bs-filter">
             <option value="">Tipo: Todos</option>
             <option value="income">Ingresos</option>
             <option value="expense">Gastos</option>
           </select>
-          <select id="category_filter" class="form-control form-control-sm" style="width:120px;">
+          <select id="category_filter" class="form-control form-control-sm bs-filter">
             <option value="">Cat: Todas</option>
             <option value="business">Empresa</option>
             <option value="personal">Personal</option>
@@ -36,7 +36,7 @@ require __DIR__ . '/../app/layout/sidebar.php';
             <option value="capital">Capital</option>
             <option value="workers">Pago Trabajadores</option>
           </select>
-          <select id="pm_filter" class="form-control form-control-sm" style="width:120px;">
+          <select id="pm_filter" class="form-control form-control-sm bs-filter">
             <option value="">Medio: Todos</option>
             <option value="cash">Efectivo</option>
             <option value="digital">Digital (Todos)</option>
@@ -55,23 +55,25 @@ require __DIR__ . '/../app/layout/sidebar.php';
       </div>
 
       <div class="card-body">
-        <table id="tx" class="table table-bordered table-striped">
-          <thead>
-            <tr>
-              <th>Fecha</th>
-              <th>Tipo</th>
-              <th>Categoría</th>
-              <th>Descripción</th>
-              <th>Factura</th>
-              <th>RUC</th>
-              <th>Monto</th>
-              <th>Medio</th>
-              <th>Registro</th>
-              <th>Usuario (Telegram)</th>
-              <th>Acción</th>
-            </tr>
-          </thead>
-        </table>
+        <div class="table-responsive">
+          <table id="tx" class="table table-bordered table-striped">
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Tipo</th>
+                <th>Categoría</th>
+                <th>Descripción</th>
+                <th>Factura</th>
+                <th>RUC</th>
+                <th>Monto</th>
+                <th>Medio</th>
+                <th>Registro</th>
+                <th>Usuario (Telegram)</th>
+                <th>Acción</th>
+              </tr>
+            </thead>
+          </table>
+        </div>
       </div>
     </div>
 
@@ -153,7 +155,6 @@ require __DIR__ . '/../app/layout/sidebar.php';
     </form>
   </div>
 </div>
-<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
 <script>
 $(function(){
   // Configuración de rangos para facilitar la búsqueda
@@ -187,6 +188,8 @@ $(function(){
   });
 
   const table = $('#tx').DataTable({
+    scrollX: true,
+    autoWidth: false,
     ajax: {
       url: '/api/transactions.php',
       data: function(d){
@@ -198,6 +201,10 @@ $(function(){
         d.payment_method = $('#pm_filter').val();
       }
     },
+    columnDefs: [
+      { targets: 3, className: 'text-wrap', render: function(data){ return $('<div>').text(data || '').html(); } },
+      { targets: [0,1,2,4,5,6,7,8,9,10], className: 'text-nowrap' }
+    ],
     columns: [
       { data: 'item_datetime' },
       { data: 'kind_label' },

@@ -124,6 +124,20 @@ body{
   gap:8px;
 }
 
+.card-header .card-tools .bs-filter{
+  flex:1 1 160px;
+  min-width:160px;
+}
+
+.card-header .card-tools .bs-filter.bs-filter-range{
+  flex:2 1 260px;
+  min-width:220px;
+}
+
+.card-header .card-tools .btn{
+  flex:0 0 auto;
+}
+
 .dataTables_wrapper .dataTables_length,
 .dataTables_wrapper .dataTables_filter{
   margin-bottom:8px;
@@ -150,6 +164,14 @@ body{
   }
   .dataTables_wrapper .dataTables_filter input{
     width:100%;
+  }
+  .card-header .card-tools .bs-filter{
+    flex:1 1 100%;
+    min-width:0;
+  }
+  .card-header .card-tools .bs-filter.bs-filter-range{
+    flex:1 1 100%;
+    min-width:0;
   }
   .table{
     font-size:13px;

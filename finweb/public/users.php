@@ -94,44 +94,46 @@ if ($perm_user_id > 0) {
         </div>
       </div>
       <div class="card-body">
-        <table class="table table-bordered table-striped" id="tbl">
-          <thead>
-            <tr>
-              <th>Nombre</th><th>Email</th><th>Rol</th><th>Empresas</th><th>Activo</th><th>Fecha</th><th></th>
-            </tr>
-          </thead>
-          <tbody>
-          <?php foreach($rows as $r): ?>
-            <tr>
-              <td><?= h($r['name']) ?></td>
-              <td><?= h($r['email']) ?></td>
-              <td><?= h($r['role']) ?></td>
-              <td>
-                <?php
-                  $wid = (int)$r['id'];
-                  $assigned = array_keys($map[$wid] ?? []);
-                  if (empty($assigned)) {
-                    echo '-';
-                  } else {
-                    $names = [];
-                    foreach ($companies as $c) {
-                      if (isset($map[$wid][(int)$c['id']])) $names[] = $c['name'];
+        <div class="table-responsive">
+          <table class="table table-bordered table-striped" id="tbl">
+            <thead>
+              <tr>
+                <th>Nombre</th><th>Email</th><th>Rol</th><th>Empresas</th><th>Activo</th><th>Fecha</th><th></th>
+              </tr>
+            </thead>
+            <tbody>
+            <?php foreach($rows as $r): ?>
+              <tr>
+                <td class="text-nowrap"><?= h($r['name']) ?></td>
+                <td class="text-nowrap"><?= h($r['email']) ?></td>
+                <td class="text-nowrap"><?= h($r['role']) ?></td>
+                <td class="text-wrap">
+                  <?php
+                    $wid = (int)$r['id'];
+                    $assigned = array_keys($map[$wid] ?? []);
+                    if (empty($assigned)) {
+                      echo '-';
+                    } else {
+                      $names = [];
+                      foreach ($companies as $c) {
+                        if (isset($map[$wid][(int)$c['id']])) $names[] = $c['name'];
+                      }
+                      echo h(implode(', ', $names));
                     }
-                    echo h(implode(', ', $names));
-                  }
-                ?>
-              </td>
-              <td><?= $r['is_active'] ? 'Sí' : 'No' ?></td>
-              <td><?= (new DateTime($r['created_at']))->format('Y-m-d') ?></td>
-              <td style="white-space:nowrap;">
-                <a class="btn btn-sm btn-info btn-perms" href="/users.php?perm_user_id=<?= (int)$r['id'] ?>">
-                  <i class="fas fa-building"></i>
-                </a>
-              </td>
-            </tr>
-          <?php endforeach; ?>
-          </tbody>
-        </table>
+                  ?>
+                </td>
+                <td class="text-nowrap"><?= $r['is_active'] ? 'Sí' : 'No' ?></td>
+                <td class="text-nowrap"><?= (new DateTime($r['created_at']))->format('Y-m-d') ?></td>
+                <td class="text-nowrap">
+                  <a class="btn btn-sm btn-info btn-perms" href="/users.php?perm_user_id=<?= (int)$r['id'] ?>">
+                    <i class="fas fa-building"></i>
+                  </a>
+                </td>
+              </tr>
+            <?php endforeach; ?>
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
 
