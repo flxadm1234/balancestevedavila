@@ -72,6 +72,14 @@ foreach ($pdo->query("SELECT web_user_id, company_id FROM web_user_companies ORD
   if (!isset($map[$wid])) $map[$wid] = [];
   $map[$wid][$cid] = true;
 }
+
+$perm_user_id = (int)($_GET['perm_user_id'] ?? 0);
+$perm_user_email = '';
+if ($perm_user_id > 0) {
+  foreach ($rows as $rr) {
+    if ((int)$rr['id'] === $perm_user_id) { $perm_user_email = (string)$rr['email']; break; }
+  }
+}
 ?>
 <section class="content pt-3">
   <div class="container-fluid">
@@ -116,16 +124,9 @@ foreach ($pdo->query("SELECT web_user_id, company_id FROM web_user_companies ORD
               <td><?= $r['is_active'] ? 'Sí' : 'No' ?></td>
               <td><?= (new DateTime($r['created_at']))->format('Y-m-d') ?></td>
               <td style="white-space:nowrap;">
-                <button
-                  class="btn btn-sm btn-info btn-perms"
-                  data-user-id="<?= (int)$r['id'] ?>"
-                  data-user-email="<?= h($r['email']) ?>"
-                  data-company-ids="<?= h(implode(',', array_keys($map[(int)$r['id']] ?? []))) ?>"
-                  data-toggle="modal"
-                  data-target="#modalPerms"
-                >
+                <a class="btn btn-sm btn-info btn-perms" href="/users.php?perm_user_id=<?= (int)$r['id'] ?>">
                   <i class="fas fa-building"></i>
-                </button>
+                </a>
               </td>
             </tr>
           <?php endforeach; ?>
@@ -162,16 +163,16 @@ foreach ($pdo->query("SELECT web_user_id, company_id FROM web_user_companies ORD
   <div class="modal-dialog">
     <form class="modal-content" method="post">
       <input type="hidden" name="action" value="update_companies">
-      <input type="hidden" name="web_user_id" id="perm_user_id" value="">
+      <input type="hidden" name="web_user_id" id="perm_user_id" value="<?= (int)$perm_user_id ?>">
       <div class="modal-header">
         <h5 class="modal-title">Acceso por empresa</h5>
         <button type="button" class="close" data-dismiss="modal">&times;</button>
       </div>
       <div class="modal-body">
-        <div class="mb-2 text-muted" id="perm_user_email"></div>
+        <div class="mb-2 text-muted" id="perm_user_email"><?= h($perm_user_email) ?></div>
         <?php foreach ($companies as $c): ?>
           <div class="custom-control custom-checkbox">
-            <input class="custom-control-input perm-company" type="checkbox" id="c<?= (int)$c['id'] ?>" name="companies[]" value="<?= (int)$c['id'] ?>">
+            <input class="custom-control-input perm-company" type="checkbox" id="c<?= (int)$c['id'] ?>" name="companies[]" value="<?= (int)$c['id'] ?>" <?= (($perm_user_id > 0) && isset($map[$perm_user_id][(int)$c['id']])) ? 'checked' : '' ?>>
             <label class="custom-control-label" for="c<?= (int)$c['id'] ?>"><?= h($c['name']) ?></label>
           </div>
         <?php endforeach; ?>
@@ -187,19 +188,10 @@ foreach ($pdo->query("SELECT web_user_id, company_id FROM web_user_companies ORD
 <script>
 $(function(){
   $('#tbl').DataTable();
-  $('#modalPerms').on('show.bs.modal', function(e) {
-    const btn = $(e.relatedTarget);
-    const uid = btn.data('user-id');
-    const email = btn.data('user-email');
-    const companyIds = (btn.data('company-ids') || '').toString().split(',').filter(x => x);
-
-    $('#perm_user_id').val(uid);
-    $('#perm_user_email').text(email);
-    $('.perm-company').prop('checked', false);
-    companyIds.forEach(id => {
-      $('#c' + id).prop('checked', true);
-    });
-  });
+  const permUserId = <?= (int)$perm_user_id ?>;
+  if (permUserId > 0) {
+    $('#modalPerms').modal('show');
+  }
 });
 </script>
 
