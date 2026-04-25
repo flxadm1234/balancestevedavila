@@ -104,6 +104,61 @@ body{
   -webkit-overflow-scrolling:touch;
 }
 
+.main-header .navbar-nav .nav-link{
+  display:flex;
+  align-items:center;
+  gap:8px;
+}
+
+.main-header .navbar-nav .nav-link .nav-text{
+  display:inline-block;
+  max-width:220px;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+
+.card-header .card-tools{
+  display:flex;
+  flex-wrap:wrap;
+  gap:8px;
+}
+
+.dataTables_wrapper .dataTables_length,
+.dataTables_wrapper .dataTables_filter{
+  margin-bottom:8px;
+}
+
+.dataTables_wrapper .dataTables_filter input{
+  width:220px;
+}
+
+.table td, .table th{
+  vertical-align:middle;
+}
+
+.table td{
+  word-break:break-word;
+}
+
+@media (max-width: 576px){
+  .main-header .navbar-nav .nav-link .nav-text{
+    max-width:120px;
+  }
+  .main-header .navbar-nav .nav-link .nav-text.hide-xs{
+    display:none;
+  }
+  .dataTables_wrapper .dataTables_filter input{
+    width:100%;
+  }
+  .table{
+    font-size:13px;
+  }
+  .table td, .table th{
+    padding:.5rem;
+  }
+}
+
 @media (max-width: 480px){
   .bs-login{
     padding:18px 10px;
@@ -112,4 +167,3 @@ body{
     padding:18px 14px 14px 14px;
   }
 }
-

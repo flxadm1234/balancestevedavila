@@ -30,20 +30,22 @@ require __DIR__ . '/../app/layout/sidebar.php';
         </div>
       </div>
       <div class="card-body">
-        <table id="records" class="table table-bordered table-striped">
-          <thead>
-            <tr>
-              <th>Fecha</th>
-              <th>Tipo</th>
-              <th>Descripción</th>
-              <th>Factura</th>
-              <th>RUC</th>
-              <th>Monto</th>
-              <th>Voucher/Audio</th>
-              <th>Ver</th>
-            </tr>
-          </thead>
-        </table>
+        <div class="table-responsive">
+          <table id="records" class="table table-bordered table-striped">
+            <thead>
+              <tr>
+                <th>Fecha</th>
+                <th>Tipo</th>
+                <th>Descripción</th>
+                <th>Factura</th>
+                <th>RUC</th>
+                <th>Monto</th>
+                <th>Voucher/Audio</th>
+                <th>Ver</th>
+              </tr>
+            </thead>
+          </table>
+        </div>
       </div>
     </div>
   </div>
@@ -83,6 +85,10 @@ require __DIR__ . '/../app/layout/sidebar.php';
           d.kind = $('#kind').val();
         }
       },
+      columnDefs: [
+        { targets: 2, className: 'text-wrap', render: function(data){ return $('<div>').text(data || '').html(); } },
+        { targets: [0,1,3,4,5,6,7], className: 'text-nowrap' }
+      ],
       columns: [
         { data: 'confirmed_at' },
         { data: 'kind_label' },
@@ -105,4 +111,3 @@ require __DIR__ . '/../app/layout/sidebar.php';
     });
   });
 </script>
-

@@ -14,13 +14,13 @@ $companyName = current_company_name();
   </ul>
   <ul class="navbar-nav ml-auto">
     <li class="nav-item">
-      <a class="nav-link" href="/login.php"><i class="fas fa-building"></i> <?= h($companyName ?: 'Empresa') ?></a>
+      <a class="nav-link" href="/login.php"><i class="fas fa-building"></i> <span class="nav-text"><?= h($companyName ?: 'Empresa') ?></span></a>
     </li>
     <li class="nav-item">
-      <a class="nav-link" href="/settings.php"><i class="fas fa-user-cog"></i> <?= h($u['name'] ?? 'Usuario') ?></a>
+      <a class="nav-link" href="/settings.php"><i class="fas fa-user-cog"></i> <span class="nav-text"><?= h($u['name'] ?? 'Usuario') ?></span></a>
     </li>
     <li class="nav-item">
-      <a class="nav-link text-danger" href="/logout.php"><i class="fas fa-sign-out-alt"></i> Salir</a>
+      <a class="nav-link text-danger" href="/logout.php"><i class="fas fa-sign-out-alt"></i> <span class="nav-text hide-xs">Salir</span></a>
     </li>
   </ul>
 </nav>
