@@ -64,7 +64,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
       }
       $st = $pdo->prepare("UPDATE companies SET is_active = :v, updated_at = now() WHERE id = :id");
-      $st->execute([':v' => ($val === 1), ':id' => $id]);
+      $st->execute([':v' => ($val === 1 ? 'true' : 'false'), ':id' => $id]);
       header('Location: /companies.php?msg=' . rawurlencode('Estado actualizado.'));
       exit;
     }
@@ -83,15 +83,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         exit;
       }
  
-      $st = $pdo->prepare("SELECT 1 FROM users WHERE active_company_id = :id LIMIT 1");
+      $pdo->beginTransaction();
+      $st = $pdo->prepare("UPDATE users SET active_company_id = NULL WHERE active_company_id = :id");
       $st->execute([':id' => $id]);
-      if ($st->fetchColumn()) {
-        header('Location: /companies.php?error=' . rawurlencode('No se puede eliminar: la empresa está en uso por usuarios. Desactívala.'));
-        exit;
-      }
- 
       $st = $pdo->prepare("DELETE FROM companies WHERE id = :id");
       $st->execute([':id' => $id]);
+      $pdo->commit();
+ 
+      if (current_company_id() === $id) {
+        unset($_SESSION['company']);
+      }
       header('Location: /companies.php?msg=' . rawurlencode('Empresa eliminada.'));
       exit;
     }
@@ -236,7 +237,7 @@ require __DIR__ . '/../app/layout/sidebar.php';
 $(function(){
   $('#tbl').DataTable();
  
-  $('.btn-edit').on('click', function(){
+  $('#tbl').on('click', '.btn-edit', function(){
     const id = $(this).data('id');
     const name = $(this).data('name');
     $('#edit_id').val(id);
@@ -244,17 +245,18 @@ $(function(){
     $('#modalEdit').modal('show');
   });
  
-  $('.btn-toggle').on('click', function(){
+  $('#tbl').on('click', '.btn-toggle', function(){
     const id = $(this).data('id');
     const active = $(this).data('active');
-    const ok = confirm(active === 1 ? '¿Activar esta empresa?' : '¿Desactivar esta empresa?');
+    const willActive = (String(active) === '1');
+    const ok = confirm(willActive ? '¿Activar esta empresa?' : '¿Desactivar esta empresa?');
     if (!ok) return;
     $('#toggle_id').val(id);
     $('#toggle_active').val(active);
     $('#formToggle').trigger('submit');
   });
  
-  $('.btn-del').on('click', function(){
+  $('#tbl').on('click', '.btn-del', function(){
     const id = $(this).data('id');
     const ok = confirm('¿Eliminar esta empresa? Esta acción no se puede deshacer.');
     if (!ok) return;
