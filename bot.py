@@ -144,7 +144,7 @@ async def send_confirmed_page(target_message: Message, *, db, telegram_user, pag
 
     company_id = await get_user_active_company_id(db, user_id)
     if company_id is None:
-        await target_message.answer("🏢 Primero selecciona tu empresa activa:", reply_markup=kb_company_select("active_company"))
+        await target_message.answer("🏢 Primero selecciona tu empresa activa:", reply_markup=await kb_company_select(db, "active_company"))
         return
 
     total = await count_confirmed_batches(db, user_id, company_id=company_id)
@@ -224,13 +224,15 @@ def kb_mode_menu(current: str):
         [InlineKeyboardButton(text="⬅️ Volver", callback_data="draft_view")]
     ])
 
-def kb_company_select(prefix: str):
-    return InlineKeyboardMarkup(inline_keyboard=[
-        [InlineKeyboardButton(text="1) OVBRA NORESTE SELVA", callback_data=f"{prefix}:1")],
-        [InlineKeyboardButton(text="2) STEVEDAVILA & ABOGADOS", callback_data=f"{prefix}:2")],
-        [InlineKeyboardButton(text="3) STEVE DAVILA RUIZ (RUC 10)", callback_data=f"{prefix}:3")],
-        [InlineKeyboardButton(text="⬅️ Volver", callback_data="draft_view")]
-    ])
+async def kb_company_select(db, prefix: str):
+    rows = await list_companies(db)
+    buttons = []
+    for r in rows:
+        cid = int(r["id"])
+        name = str(r["name"])
+        buttons.append([InlineKeyboardButton(text=f"{cid}) {name}", callback_data=f"{prefix}:{cid}")])
+    buttons.append([InlineKeyboardButton(text="⬅️ Volver", callback_data="draft_view")])
+    return InlineKeyboardMarkup(inline_keyboard=buttons)
 
 async def _apply_extracted_batch_meta(db, *, user_id: int, batch_id: int, data: dict):
     company_ruc = data.get("company_ruc") or data.get("ruc") or None
@@ -456,7 +458,7 @@ async def main():
         user_id = await upsert_user(db, message.from_user.id, message.from_user.first_name, message.from_user.username)
         company_id = await get_user_active_company_id(db, user_id)
         if company_id is None:
-            await message.answer("🏢 Primero selecciona tu empresa activa:", reply_markup=kb_company_select("active_company"))
+            await message.answer("🏢 Primero selecciona tu empresa activa:", reply_markup=await kb_company_select(db, "active_company"))
             return
 
         # rows para export
@@ -603,7 +605,7 @@ async def main():
 
         await state.update_data(friendly_name=name)
         await state.set_state(ConfirmFlow.waiting_company)
-        await message.answer("🏢 Selecciona la empresa para este registro:", reply_markup=kb_company_select("confirm_company"))
+        await message.answer("🏢 Selecciona la empresa para este registro:", reply_markup=await kb_company_select(db, "confirm_company"))
 
     @dispatcher.callback_query(ConfirmFlow.waiting_company, F.data.startswith("confirm_company:"))
     async def cb_confirm_company(call: CallbackQuery, state: FSMContext):
@@ -747,7 +749,7 @@ async def main():
 
     @dispatcher.callback_query(F.data == "company_menu")
     async def cb_company_menu(call: CallbackQuery):
-        await call.message.answer("🏢 Elige tu empresa activa:", reply_markup=kb_company_select("active_company"))
+        await call.message.answer("🏢 Elige tu empresa activa:", reply_markup=await kb_company_select(db, "active_company"))
         await call.answer()
 
     @dispatcher.callback_query(F.data.startswith("active_company:"))
@@ -831,7 +833,7 @@ async def main():
         user_id = await upsert_user(db, message.from_user.id, message.from_user.first_name, message.from_user.username)
         company_id = await get_user_active_company_id(db, user_id)
         if company_id is None:
-            await message.answer("🏢 Primero selecciona tu empresa activa:", reply_markup=kb_company_select("active_company"))
+            await message.answer("🏢 Primero selecciona tu empresa activa:", reply_markup=await kb_company_select(db, "active_company"))
             return
         items = await get_confirmed_batch_items(db, user_id, batch_id, company_id=company_id)
 
@@ -866,7 +868,7 @@ async def main():
         user_id = await upsert_user(db, message.from_user.id, message.from_user.first_name, message.from_user.username)
         company_id = await get_user_active_company_id(db, user_id)
         if company_id is None:
-            await message.answer("🏢 Primero selecciona tu empresa activa:", reply_markup=kb_company_select("active_company"))
+            await message.answer("🏢 Primero selecciona tu empresa activa:", reply_markup=await kb_company_select(db, "active_company"))
             return
         ok = await delete_confirmed_batch(db, user_id, batch_id, company_id=company_id)
 
@@ -903,7 +905,7 @@ async def main():
         await state.clear()
         await state.set_state(ConfirmFlow.waiting_company)
         await state.update_data(friendly_name=name)
-        await message.answer("🏢 Selecciona la empresa para este registro:", reply_markup=kb_company_select("confirm_company"))
+        await message.answer("🏢 Selecciona la empresa para este registro:", reply_markup=await kb_company_select(db, "confirm_company"))
 
     # -----------------------------
     # EDITAR (TU LÓGICA + IA)
@@ -1007,7 +1009,7 @@ async def main():
         user_id = await upsert_user(db, message.from_user.id, message.from_user.first_name, message.from_user.username)
         company_id = await get_user_active_company_id(db, user_id)
         if company_id is None:
-            await message.answer("🏢 Primero selecciona tu empresa activa:", reply_markup=kb_company_select("active_company"))
+            await message.answer("🏢 Primero selecciona tu empresa activa:", reply_markup=await kb_company_select(db, "active_company"))
             return
         rows = await query_items_by_datetime(db, user_id, start_dt, end_dt, company_id=company_id)
         if not rows:
