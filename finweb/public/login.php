@@ -67,23 +67,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Login</title>
+  <title>Acceso</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/admin-lte@3.2/dist/css/adminlte.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@5.15.4/css/all.min.css">
+  <link rel="stylesheet" href="/assets/app.css">
 </head>
-<body class="hold-transition login-page">
-<div class="login-box">
-  <div class="card card-outline card-primary">
-    <div class="card-header text-center">
-      <b>Sistemas</b> Web
-    </div>
-    <div class="card-body">
-      <p class="login-box-msg">Iniciar sesión</p>
+<body class="hold-transition">
+<div class="bs-login">
+  <div class="login-box">
+    <div class="card">
+      <div class="card-header">
+        <div class="brand-title">Balance & Control</div>
+        <div class="brand-subtitle">Administración contable • Ingresos y egresos por empresa</div>
+      </div>
+      <div class="card-body">
+        <p class="login-box-msg">Acceso al sistema</p>
 
       <?php if ($error): ?>
         <div class="alert alert-danger"><?= h($error) ?></div>
       <?php endif; ?>
 
       <form method="post">
+        <div class="form-group">
+          <label class="text-muted mb-1">Empresa</label>
         <div class="input-group mb-3">
           <select name="company_id" class="form-control" required>
             <option value="">Seleccionar empresa...</option>
@@ -95,18 +101,51 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           </select>
           <div class="input-group-append"><div class="input-group-text"><span class="fas fa-building"></span></div></div>
         </div>
+        </div>
+        <div class="form-group">
+          <label class="text-muted mb-1">Correo</label>
         <div class="input-group mb-3">
           <input type="email" name="email" class="form-control" placeholder="Correo" required>
           <div class="input-group-append"><div class="input-group-text"><span class="fas fa-envelope"></span></div></div>
         </div>
+        </div>
+        <div class="form-group">
+          <label class="text-muted mb-1">Contraseña</label>
         <div class="input-group mb-3">
-          <input type="password" name="password" class="form-control" placeholder="Contraseña" required>
-          <div class="input-group-append"><div class="input-group-text"><span class="fas fa-lock"></span></div></div>
+          <input id="password" type="password" name="password" class="form-control" placeholder="Contraseña" required>
+          <div class="input-group-append">
+            <div class="input-group-text toggle-pass" id="togglePass" title="Mostrar/ocultar contraseña">
+              <span class="fas fa-eye"></span>
+            </div>
+          </div>
+        </div>
         </div>
         <button class="btn btn-primary btn-block" type="submit">Iniciar sesión</button>
+        <div class="helper">
+          Si no tienes acceso a una empresa, solicita al administrador que te asigne permisos.
+        </div>
       </form>
+      </div>
     </div>
   </div>
 </div>
+
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+<script>
+  (function(){
+    const input = document.getElementById('password');
+    const btn = document.getElementById('togglePass');
+    if (!input || !btn) return;
+    btn.addEventListener('click', function(){
+      const isPwd = input.type === 'password';
+      input.type = isPwd ? 'text' : 'password';
+      const icon = btn.querySelector('span');
+      if (icon) {
+        icon.classList.remove(isPwd ? 'fa-eye' : 'fa-eye-slash');
+        icon.classList.add(isPwd ? 'fa-eye-slash' : 'fa-eye');
+      }
+    });
+  })();
+</script>
 </body>
 </html>

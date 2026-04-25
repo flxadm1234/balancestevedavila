@@ -1,0 +1,115 @@
+:root{
+  --brand-1:#0f766e;
+  --brand-2:#0b5e57;
+}
+
+body{
+  -webkit-font-smoothing:antialiased;
+  text-rendering:optimizeLegibility;
+}
+
+.bs-login{
+  min-height:100vh;
+  background:
+    radial-gradient(1200px 600px at 10% 10%, rgba(15,118,110,.22), transparent 60%),
+    radial-gradient(900px 450px at 90% 20%, rgba(59,130,246,.16), transparent 60%),
+    linear-gradient(180deg, #0b1220 0%, #111827 45%, #0b1220 100%);
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  padding:24px 12px;
+}
+
+.bs-login .login-box{
+  width:100%;
+  max-width:440px;
+  margin:0;
+}
+
+.bs-login .card{
+  border:0;
+  border-radius:14px;
+  overflow:hidden;
+  box-shadow:0 20px 60px rgba(0,0,0,.35);
+}
+
+.bs-login .card-header{
+  background:linear-gradient(135deg, var(--brand-1), var(--brand-2));
+  color:#fff;
+  border-bottom:0;
+  padding:18px 20px;
+}
+
+.bs-login .brand-title{
+  font-size:18px;
+  font-weight:700;
+  letter-spacing:.2px;
+  line-height:1.2;
+}
+
+.bs-login .brand-subtitle{
+  font-size:12px;
+  opacity:.9;
+  margin-top:4px;
+}
+
+.bs-login .card-body{
+  padding:22px 20px 18px 20px;
+}
+
+.bs-login .login-box-msg{
+  font-weight:600;
+  color:#111827;
+}
+
+.bs-login .form-control{
+  border-radius:10px;
+  height:44px;
+}
+
+.bs-login select.form-control{
+  height:44px;
+}
+
+.bs-login .input-group-text{
+  border-radius:10px;
+}
+
+.bs-login .btn-primary{
+  border-radius:10px;
+  height:44px;
+  font-weight:700;
+  background:linear-gradient(135deg, var(--brand-1), var(--brand-2));
+  border:0;
+}
+
+.bs-login .btn-primary:hover{
+  filter:brightness(1.03);
+}
+
+.bs-login .helper{
+  font-size:12px;
+  color:#6b7280;
+  margin-top:10px;
+}
+
+.bs-login .toggle-pass{
+  cursor:pointer;
+  user-select:none;
+}
+
+.table-responsive{
+  width:100%;
+  overflow-x:auto;
+  -webkit-overflow-scrolling:touch;
+}
+
+@media (max-width: 480px){
+  .bs-login{
+    padding:18px 10px;
+  }
+  .bs-login .card-body{
+    padding:18px 14px 14px 14px;
+  }
+}
+
