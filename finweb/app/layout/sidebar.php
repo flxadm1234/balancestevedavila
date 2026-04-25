@@ -65,6 +65,12 @@ $companyName = current_company_name();
 
         <?php if (($u['role'] ?? '') === 'admin'): ?>
         <li class="nav-item">
+          <a href="/companies.php" class="nav-link">
+            <i class="nav-icon fas fa-building"></i>
+            <p>Empresas</p>
+          </a>
+        </li>
+        <li class="nav-item">
           <a href="/users.php" class="nav-link">
             <i class="nav-icon fas fa-users"></i>
             <p>Usuarios</p>
