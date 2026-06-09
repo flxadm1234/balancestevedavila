@@ -96,12 +96,8 @@ require __DIR__ . '/../app/layout/sidebar.php';
     'Todo este año': [moment().startOf('year'), moment().endOf('year')]
   };
 
-  let start = moment().startOf('month');
-  const end   = moment().endOf('month');
-  
-  if (moment().date() <= 5) {
-      start = moment().subtract(1, 'month').startOf('month');
-  }
+  const start = moment().subtract(60, 'days');
+  const end   = moment();
 
   function loadDashboard(s, e){
     const cat = $('#global_category').val(); // Filtro global

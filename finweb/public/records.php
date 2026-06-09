@@ -91,8 +91,8 @@ require __DIR__ . '/../app/layout/sidebar.php';
 </div>
 
 <script>
-  const startDefault = moment().startOf('month');
-  const endDefault = moment().endOf('month');
+  const startDefault = moment().subtract(60, 'days');
+  const endDefault = moment();
   let start = startDefault.format('YYYY-MM-DD');
   let end = endDefault.format('YYYY-MM-DD');
 

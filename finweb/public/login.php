@@ -39,6 +39,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
           if (!$st->fetchColumn()) {
             $error = 'No tienes acceso a esa empresa.';
           }
+        } else {
+          $st = $pdo->prepare("INSERT INTO web_user_companies (web_user_id, company_id) VALUES (:wid, :cid) ON CONFLICT DO NOTHING");
+          $st->execute([':wid' => (int)$u['id'], ':cid' => $company_id]);
         }
       }
     }

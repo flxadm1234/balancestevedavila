@@ -168,13 +168,8 @@ $(function(){
     'Todo este año': [moment().startOf('year'), moment().endOf('year')]
   };
 
-  // Por defecto mostramos "Este mes". Si estamos en los primeros 5 días, mostramos también el mes pasado.
-  let start = moment().startOf('month');
-  const end   = moment().endOf('month');
-  
-  if (moment().date() <= 5) {
-      start = moment().subtract(1, 'month').startOf('month');
-  }
+  const start = moment().subtract(60, 'days');
+  const end   = moment();
 
   $('#range').daterangepicker({
     startDate: start, endDate: end,
